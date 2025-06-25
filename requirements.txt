@@ -1,0 +1,12 @@
+streamlit
+fastapi
+uvicorn
+langgraph
+langchain
+langsmith
+duckduckgo-search
+python-dotenv
+pytest
+pytest-cov
+flake8
+black 
