@@ -1,0 +1,218 @@
+name: 이슈 자동 할당
+
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  auto-assign:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 컴포넌트 기반 자동 할당
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const issue = context.payload.issue;
+          const title = issue.title.toLowerCase();
+          const body = (issue.body || '').toLowerCase();
+          
+          let assignees = [];
+          
+          // 컴포넌트별 담당자 매핑 (실제 사용시 실제 GitHub 사용자명으로 변경)
+          const componentAssignees = {
+            // 'streamlit': ['frontend-dev'],
+            // 'fastapi': ['backend-dev'],
+            // 'agent': ['ai-dev'],
+            // 'infrastructure': ['devops-dev'],
+            // 'documentation': ['tech-writer']
+          };
+          
+          // 제목과 본문에서 컴포넌트 키워드 검색
+          for (const [component, devs] of Object.entries(componentAssignees)) {
+            if (title.includes(component) || body.includes(component)) {
+              assignees.push(...devs);
+            }
+          }
+          
+          // Streamlit 관련 키워드
+          if (title.includes('streamlit') || body.includes('streamlit') || 
+              title.includes('frontend') || body.includes('ui') || body.includes('interface')) {
+            console.log('Streamlit/Frontend 관련 이슈 감지');
+            // assignees.push('frontend-dev');
+          }
+          
+          // FastAPI 관련 키워드
+          if (title.includes('fastapi') || body.includes('fastapi') || 
+              title.includes('api') || title.includes('backend') || title.includes('server')) {
+            console.log('FastAPI/Backend 관련 이슈 감지');
+            // assignees.push('backend-dev');
+          }
+          
+          // Agent 관련 키워드
+          if (title.includes('agent') || body.includes('langgraph') || 
+              title.includes('llm') || title.includes('langchain') || title.includes('ai')) {
+            console.log('Agent/AI 관련 이슈 감지');
+            // assignees.push('ai-dev');
+          }
+          
+          // 기본 담당자 (프로젝트 관리자)
+          if (assignees.length === 0) {
+            // assignees.push('project-manager');
+            console.log('기본 담당자에게 할당');
+          }
+          
+          // 중복 제거
+          assignees = [...new Set(assignees)];
+          
+          // 실제 할당 (사용자가 존재하는 경우만)
+          if (assignees.length > 0) {
+            try {
+              await github.rest.issues.addAssignees({
+                owner,
+                repo,
+                issue_number: number,
+                assignees: assignees
+              });
+              console.log(`할당된 담당자: ${assignees.join(', ')}`);
+            } catch (error) {
+              console.log('담당자 할당 실패 (사용자가 존재하지 않을 수 있음):', error.message);
+            }
+          }
+
+    - name: 우선순위 기반 추가 할당
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const issue = context.payload.issue;
+          
+          // 현재 이슈의 라벨 확인
+          const labels = issue.labels.map(label => label.name);
+          
+          // Critical 또는 High priority 이슈의 경우 추가 담당자 할당
+          if (labels.includes('priority:critical') || labels.includes('priority:high')) {
+            console.log('높은 우선순위 이슈 감지');
+            
+            // 추가 알림 댓글
+            const urgentComment = `
+          🚨 **높은 우선순위 이슈 감지**
+          
+          이 이슈는 높은 우선순위로 분류되어 추가 관리자에게도 알림이 전송되었습니다.
+          
+          **처리 일정**:
+          - Critical: 24시간 이내 초기 응답
+          - High: 48시간 이내 초기 응답
+          
+          신속한 처리를 위해 최대한 빠르게 검토하겠습니다! ⚡
+            `;
+            
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: number,
+              body: urgentComment
+            });
+            
+            // 시니어 개발자나 팀 리드에게 추가 할당
+            // const seniorDevs = ['senior-dev', 'team-lead'];
+            // try {
+            //   await github.rest.issues.addAssignees({
+            //     owner,
+            //     repo,
+            //     issue_number: number,
+            //     assignees: seniorDevs
+            //   });
+            // } catch (error) {
+            //   console.log('시니어 개발자 할당 실패:', error.message);
+            // }
+          }
+
+    - name: 이슈 타입별 템플릿 확인
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const issue = context.payload.issue;
+          const body = issue.body || '';
+          
+          // 버그 리포트 템플릿 확인
+          if (issue.title.toLowerCase().includes('bug') || body.toLowerCase().includes('bug')) {
+            const requiredSections = [
+              '현재 동작',
+              '예상 동작', 
+              '재현 단계',
+              '환경 정보'
+            ];
+            
+            const missingSections = requiredSections.filter(section => 
+              !body.toLowerCase().includes(section.toLowerCase())
+            );
+            
+            if (missingSections.length > 0) {
+              const templateComment = `
+          📋 **버그 리포트 템플릿 확인**
+          
+          더 빠른 버그 해결을 위해 다음 정보가 누락되었습니다:
+          
+          ${missingSections.map(section => `- ${section}`).join('\n')}
+          
+          가능하시면 이슈 설명을 편집하여 추가 정보를 제공해주세요:
+          
+          **현재 동작**: 실제로 어떤 일이 발생하는지
+          **예상 동작**: 어떤 일이 발생해야 하는지  
+          **재현 단계**: 1. 2. 3. 단계별 설명
+          **환경 정보**: Python 버전, OS, 브라우저 등
+          
+          감사합니다! 🐛
+              `;
+              
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: number,
+                body: templateComment
+              });
+            }
+          }
+          
+          // 기능 요청 템플릿 확인
+          if (issue.title.toLowerCase().includes('feature') || 
+              issue.title.toLowerCase().includes('enhancement') ||
+              body.toLowerCase().includes('feature request')) {
+            
+            const requiredSections = [
+              '기능 설명',
+              '사용 시나리오',
+              '수용 기준'
+            ];
+            
+            const missingSections = requiredSections.filter(section => 
+              !body.toLowerCase().includes(section.toLowerCase())
+            );
+            
+            if (missingSections.length > 0) {
+              const featureTemplateComment = `
+          ✨ **기능 요청 템플릿 확인**
+          
+          기능 개발을 위해 다음 정보가 더 필요합니다:
+          
+          ${missingSections.map(section => `- ${section}`).join('\n')}
+          
+          이슈 설명에 다음 내용을 추가해주시면 도움이 됩니다:
+          
+          **기능 설명**: 어떤 기능을 원하시나요?
+          **사용 시나리오**: 언제, 어떻게 사용될까요?
+          **수용 기준**: 어떻게 되면 완성된 것인가요?
+          
+          자세한 정보를 제공해주셔서 감사합니다! 🚀
+              `;
+              
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: number,
+                body: featureTemplateComment
+              });
+            }
+          } 

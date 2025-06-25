@@ -1,0 +1,202 @@
+name: PR 자동 라벨링
+
+on:
+  pull_request:
+    types: [opened, synchronize, edited]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 파일 기반 컴포넌트 라벨링
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          
+          // 현재 PR의 파일 변경사항 가져오기
+          const files = await github.rest.pulls.listFiles({
+            owner,
+            repo,
+            pull_number: number
+          });
+          
+          const labels = new Set();
+          
+          for (const file of files.data) {
+            const filename = file.filename.toLowerCase();
+            
+            // 컴포넌트별 라벨링
+            if (filename.includes('streamlit') || filename.includes('frontend') || 
+                (filename.endsWith('.py') && (filename.includes('ui') || filename.includes('interface')))) {
+              labels.add('component:frontend');
+            }
+            
+            if (filename.includes('fastapi') || filename.includes('api') || filename.includes('backend') ||
+                filename.includes('server') || filename.includes('endpoint')) {
+              labels.add('component:backend');
+            }
+            
+            if (filename.includes('agent') || filename.includes('langgraph') || 
+                filename.includes('llm') || filename.includes('langchain')) {
+              labels.add('component:agent');
+            }
+            
+            if (filename.includes('test') || filename.includes('spec') || 
+                filename.startsWith('test_') || filename.endsWith('_test.py')) {
+              labels.add('component:test');
+            }
+            
+            if (filename.includes('.github') || filename.includes('ci') || 
+                filename.includes('cd') || filename.includes('workflow')) {
+              labels.add('component:infrastructure');
+            }
+            
+            if (filename.includes('docs') || filename.includes('readme') || 
+                filename.includes('.md') || filename.includes('documentation')) {
+              labels.add('component:documentation');
+            }
+            
+            // 파일 타입별 라벨링
+            if (filename.endsWith('.py')) {
+              labels.add('language:python');
+            }
+            if (filename.endsWith('.yml') || filename.endsWith('.yaml')) {
+              labels.add('language:yaml');
+            }
+            if (filename.endsWith('.json')) {
+              labels.add('language:json');
+            }
+          }
+          
+          // 라벨 적용
+          if (labels.size > 0) {
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: number,
+              labels: Array.from(labels)
+            });
+            console.log(`적용된 라벨: ${Array.from(labels).join(', ')}`);
+          }
+
+    - name: PR 제목 기반 타입 라벨링
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const pr = context.payload.pull_request;
+          const title = pr.title.toLowerCase();
+          const body = (pr.body || '').toLowerCase();
+          
+          const labels = new Set();
+          
+          // PR 제목/내용 키워드 기반 타입 라벨링
+          if (title.includes('[feat]') || title.includes('[feature]') || 
+              title.includes('add') || title.includes('implement') || 
+              body.includes('new feature') || body.includes('새로운 기능')) {
+            labels.add('type:feature');
+          }
+          
+          if (title.includes('[fix]') || title.includes('[bug]') || 
+              title.includes('fix') || title.includes('resolve') ||
+              body.includes('bug fix') || body.includes('버그 수정')) {
+            labels.add('type:bug');
+          }
+          
+          if (title.includes('[refactor]') || title.includes('refactor') || 
+              title.includes('restructure') || title.includes('cleanup') ||
+              body.includes('리팩토링') || body.includes('refactoring')) {
+            labels.add('type:refactor');
+          }
+          
+          if (title.includes('[docs]') || title.includes('docs') || 
+              title.includes('documentation') || title.includes('readme') ||
+              body.includes('문서') || body.includes('documentation')) {
+            labels.add('type:docs');
+          }
+          
+          if (title.includes('[test]') || title.includes('test') || 
+              title.includes('testing') || body.includes('테스트')) {
+            labels.add('type:test');
+          }
+          
+          if (title.includes('[chore]') || title.includes('chore') || 
+              title.includes('maintenance') || body.includes('유지보수')) {
+            labels.add('type:chore');
+          }
+          
+          // 라벨 적용
+          if (labels.size > 0) {
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: number,
+              labels: Array.from(labels)
+            });
+            console.log(`타입 라벨 적용: ${Array.from(labels).join(', ')}`);
+          }
+
+    - name: PR 크기 기반 라벨링
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const pr = context.payload.pull_request;
+          
+          const changedFiles = pr.changed_files;
+          const additions = pr.additions;
+          const deletions = pr.deletions;
+          const totalChanges = additions + deletions;
+          
+          let sizeLabel = '';
+          
+          // PR 크기 기준
+          if (totalChanges <= 50 && changedFiles <= 3) {
+            sizeLabel = 'size:small';
+          } else if (totalChanges <= 200 && changedFiles <= 10) {
+            sizeLabel = 'size:medium';
+          } else if (totalChanges <= 500 && changedFiles <= 20) {
+            sizeLabel = 'size:large';
+          } else {
+            sizeLabel = 'size:extra-large';
+          }
+          
+          await github.rest.issues.addLabels({
+            owner,
+            repo,
+            issue_number: number,
+            labels: [sizeLabel]
+          });
+          
+          console.log(`크기 라벨 적용: ${sizeLabel} (파일: ${changedFiles}, 변경: ${totalChanges}라인)`);
+
+    - name: 우선순위 라벨링
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const pr = context.payload.pull_request;
+          const title = pr.title.toLowerCase();
+          const body = (pr.body || '').toLowerCase();
+          
+          let priorityLabel = '';
+          
+          // 우선순위 키워드 기반 라벨링
+          if (title.includes('urgent') || title.includes('critical') || title.includes('hotfix') ||
+              body.includes('긴급') || body.includes('critical') || body.includes('urgent')) {
+            priorityLabel = 'priority:high';
+          } else if (title.includes('important') || body.includes('중요') || body.includes('important')) {
+            priorityLabel = 'priority:medium';
+          } else {
+            priorityLabel = 'priority:low';
+          }
+          
+          await github.rest.issues.addLabels({
+            owner,
+            repo,
+            issue_number: number,
+            labels: [priorityLabel]
+          });
+          
+          console.log(`우선순위 라벨 적용: ${priorityLabel}`); 

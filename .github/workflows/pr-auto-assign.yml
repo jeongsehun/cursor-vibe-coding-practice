@@ -1,0 +1,114 @@
+name: PR 자동 할당
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  auto-assign:
+    runs-on: ubuntu-latest
+    steps:
+    - name: PR 작성자 할당
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const pr = context.payload.pull_request;
+          
+          // PR 작성자를 assignee로 할당
+          await github.rest.issues.addAssignees({
+            owner,
+            repo,
+            issue_number: number,
+            assignees: [pr.user.login]
+          });
+          
+          console.log(`PR 작성자 ${pr.user.login}이 할당되었습니다.`);
+
+    - name: 코드 소유자 기반 리뷰어 할당
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const pr = context.payload.pull_request;
+          
+          // 파일 변경사항을 가져와서 리뷰어 결정
+          const files = await github.rest.pulls.listFiles({
+            owner,
+            repo,
+            pull_number: number
+          });
+          
+          const reviewers = new Set();
+          const teamReviewers = new Set();
+          
+          for (const file of files.data) {
+            const filename = file.filename;
+            
+            // 파일 경로에 따른 리뷰어 할당 로직
+            if (filename.includes('streamlit') || filename.includes('frontend') || filename.endsWith('.py') && filename.includes('ui')) {
+              // Frontend 변경사항
+              console.log(`Frontend 변경 감지: ${filename}`);
+            } else if (filename.includes('fastapi') || filename.includes('api') || filename.includes('backend')) {
+              // Backend 변경사항
+              console.log(`Backend 변경 감지: ${filename}`);
+            } else if (filename.includes('agent') || filename.includes('langgraph') || filename.includes('llm')) {
+              // Agent 변경사항
+              console.log(`Agent 변경 감지: ${filename}`);
+            } else if (filename.includes('test') || filename.includes('spec')) {
+              // 테스트 변경사항
+              console.log(`테스트 변경 감지: ${filename}`);
+            } else if (filename.includes('.github') || filename.includes('ci') || filename.includes('cd')) {
+              // CI/CD 변경사항
+              console.log(`CI/CD 변경 감지: ${filename}`);
+            }
+          }
+          
+          // 기본 리뷰어 (프로젝트 관리자나 시니어 개발자)
+          // 실제 사용시에는 실제 GitHub 사용자명으로 변경 필요
+          const defaultReviewers = []; // 예: ['project-manager', 'senior-dev']
+          
+          if (defaultReviewers.length > 0) {
+            try {
+              await github.rest.pulls.requestReviewers({
+                owner,
+                repo,
+                pull_number: number,
+                reviewers: defaultReviewers
+              });
+              console.log(`기본 리뷰어 할당: ${defaultReviewers.join(', ')}`);
+            } catch (error) {
+              console.log('리뷰어 할당 실패 (사용자가 존재하지 않을 수 있음):', error.message);
+            }
+          }
+
+    - name: PR 크기에 따른 추가 리뷰어 할당
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const pr = context.payload.pull_request;
+          
+          // 큰 PR의 경우 추가 리뷰어 할당
+          if (pr.changed_files > 10 || (pr.additions + pr.deletions) > 300) {
+            console.log('큰 PR 감지 - 추가 리뷰어 할당을 고려해주세요');
+            
+            const comment = `
+            📢 **큰 PR 감지 - 추가 리뷰 요청**
+            
+            이 PR은 많은 변경사항을 포함하고 있어 추가 리뷰어의 검토가 필요할 수 있습니다.
+            
+            **변경사항**:
+            - 파일: ${pr.changed_files}개
+            - 라인: +${pr.additions}/-${pr.deletions}
+            
+            프로젝트 관리자는 적절한 추가 리뷰어를 할당해주세요.
+            `;
+            
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: number,
+              body: comment
+            });
+          } 

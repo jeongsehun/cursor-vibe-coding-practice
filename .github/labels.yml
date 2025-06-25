@@ -1,0 +1,198 @@
+# GitHub 라벨 설정 파일
+# 이 파일을 사용하여 일관된 라벨 체계를 유지할 수 있습니다.
+
+# 타입별 라벨
+- name: "type:bug"
+  color: "d73a4a"
+  description: "버그, 오류, 문제점"
+
+- name: "type:enhancement"
+  color: "a2eeef"
+  description: "새로운 기능, 개선사항"
+
+- name: "type:question"
+  color: "d876e3"
+  description: "질문, 도움 요청"
+
+- name: "type:documentation"
+  color: "0075ca"
+  description: "문서 관련"
+
+- name: "type:test"
+  color: "fef2c0"
+  description: "테스트 관련"
+
+- name: "type:refactor"
+  color: "fbca04"
+  description: "리팩토링"
+
+- name: "type:chore"
+  color: "fef2c0"
+  description: "유지보수, 기타 작업"
+
+# 컴포넌트별 라벨
+- name: "component:streamlit"
+  color: "ff6b6b"
+  description: "Streamlit 프론트엔드"
+
+- name: "component:fastapi"
+  color: "4ecdc4"
+  description: "FastAPI 백엔드"
+
+- name: "component:langgraph"
+  color: "45b7d1"
+  description: "LangGraph Agent"
+
+- name: "component:tools"
+  color: "96ceb4"
+  description: "DuckDuckGo Search Tools"
+
+- name: "component:infrastructure"
+  color: "ffeaa7"
+  description: "CI/CD, 인프라"
+
+- name: "component:documentation"
+  color: "74b9ff"
+  description: "문서, README"
+
+- name: "component:frontend"
+  color: "ff7675"
+  description: "프론트엔드 관련"
+
+- name: "component:backend"
+  color: "00b894"
+  description: "백엔드 관련"
+
+- name: "component:agent"
+  color: "6c5ce7"
+  description: "AI Agent 관련"
+
+- name: "component:test"
+  color: "fdcb6e"
+  description: "테스트 관련"
+
+# 우선순위 라벨
+- name: "priority:critical"
+  color: "b60205"
+  description: "긴급 - 즉시 처리 필요"
+
+- name: "priority:high"
+  color: "d93f0b"
+  description: "높음 - 빠른 처리 필요"
+
+- name: "priority:medium"
+  color: "fbca04"
+  description: "보통 - 일반적인 처리"
+
+- name: "priority:low"
+  color: "0e8a16"
+  description: "낮음 - 시간 여유 있음"
+
+# 크기별 라벨 (PR용)
+- name: "size:small"
+  color: "00ff00"
+  description: "작은 변경사항 (<50 라인)"
+
+- name: "size:medium"
+  color: "ffff00"
+  description: "중간 변경사항 (50-200 라인)"
+
+- name: "size:large"
+  color: "ff9900"
+  description: "큰 변경사항 (200-500 라인)"
+
+- name: "size:extra-large"
+  color: "ff0000"
+  description: "매우 큰 변경사항 (>500 라인)"
+
+# 상태별 라벨
+- name: "status:in-progress"
+  color: "fbca04"
+  description: "진행 중"
+
+- name: "status:review-needed"
+  color: "d876e3"
+  description: "리뷰 필요"
+
+- name: "status:ready-to-merge"
+  color: "0e8a16"
+  description: "병합 준비 완료"
+
+- name: "status:blocked"
+  color: "b60205"
+  description: "차단됨"
+
+- name: "status:on-hold"
+  color: "fef2c0"
+  description: "보류"
+
+# 난이도별 라벨
+- name: "difficulty:easy"
+  color: "00ff00"
+  description: "쉬움 - 초보자도 가능"
+
+- name: "difficulty:medium"
+  color: "ffff00"
+  description: "보통 - 중급자 수준"
+
+- name: "difficulty:hard"
+  color: "ff0000"
+  description: "어려움 - 고급자 수준"
+
+- name: "good first issue"
+  color: "7057ff"
+  description: "초보자에게 좋은 첫 이슈"
+
+- name: "help wanted"
+  color: "008672"
+  description: "도움이 필요함"
+
+# 언어별 라벨
+- name: "language:python"
+  color: "3776ab"
+  description: "Python 코드"
+
+- name: "language:yaml"
+  color: "cb171e"
+  description: "YAML 설정"
+
+- name: "language:json"
+  color: "000000"
+  description: "JSON 데이터"
+
+- name: "language:markdown"
+  color: "083fa1"
+  description: "Markdown 문서"
+
+# 특수 라벨
+- name: "duplicate"
+  color: "cfd3d7"
+  description: "중복된 이슈"
+
+- name: "invalid"
+  color: "e4e669"
+  description: "유효하지 않음"
+
+- name: "wontfix"
+  color: "ffffff"
+  description: "수정하지 않음"
+
+- name: "needs more info"
+  color: "d876e3"
+  description: "추가 정보 필요"
+
+- name: "external dependency"
+  color: "8B4513"
+  description: "외부 의존성 관련"
+
+- name: "performance"
+  color: "FF69B4"
+  description: "성능 관련"
+
+- name: "security"
+  color: "DC143C"
+  description: "보안 관련"
+
+- name: "breaking change"
+  color: "B22222"
+  description: "호환성을 깨뜨리는 변경" 

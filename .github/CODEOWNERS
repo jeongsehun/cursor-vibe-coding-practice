@@ -1,0 +1,97 @@
+# CODEOWNERS 파일
+# 이 파일은 코드 변경 시 자동으로 리뷰어를 할당하는데 사용됩니다.
+# 각 라인은 파일 패턴과 해당 파일의 소유자를 정의합니다.
+
+# 전역 소유자 (모든 파일에 대한 기본 소유자)
+# * @project-owner
+
+# 루트 파일들
+README.md @project-owner
+.gitignore @project-owner
+requirements.txt @project-owner
+
+# Python 프로젝트 설정 파일
+pyproject.toml @project-owner
+setup.py @project-owner
+setup.cfg @project-owner
+
+# Streamlit 관련 파일 (Frontend)
+# **/streamlit/ @frontend-team
+# **/*streamlit* @frontend-team
+# **/ui/ @frontend-team
+# **/interface/ @frontend-team
+
+# FastAPI 관련 파일 (Backend)
+# **/fastapi/ @backend-team
+# **/api/ @backend-team
+# **/backend/ @backend-team
+# **/server/ @backend-team
+# **/*api* @backend-team
+
+# LangGraph Agent 관련 파일 (AI/ML)
+# **/agent/ @ai-team
+# **/agents/ @ai-team
+# **/*agent* @ai-team
+# **/*langgraph* @ai-team
+# **/*langchain* @ai-team
+# **/llm/ @ai-team
+
+# Tools 관련 파일
+# **/tools/ @tools-team
+# **/*tool* @tools-team
+# **/*search* @tools-team
+# **/*duckduckgo* @tools-team
+
+# 테스트 파일들
+tests/ @project-owner
+test_*.py @project-owner
+*_test.py @project-owner
+**/*test*.py @project-owner
+
+# 문서 파일들
+docs/ @docs-team
+*.md @docs-team
+**/*.md @docs-team
+
+# GitHub 관련 파일들 (DevOps/Infrastructure)
+.github/ @devops-team @project-owner
+.github/workflows/ @devops-team
+.github/ISSUE_TEMPLATE/ @project-owner
+.github/pull_request_template.md @project-owner
+
+# CI/CD 관련 파일들
+.github/workflows/*.yml @devops-team
+docker-compose.yml @devops-team
+Dockerfile @devops-team
+*.dockerfile @devops-team
+
+# 설정 파일들
+.env.example @project-owner
+config/ @project-owner
+**/*config* @project-owner
+
+# 의존성 관리 파일들 (보안상 중요)
+requirements.txt @project-owner @security-team
+poetry.lock @project-owner @security-team
+package-lock.json @project-owner @security-team
+yarn.lock @project-owner @security-team
+
+# 보안 관련 파일들
+SECURITY.md @security-team @project-owner
+.github/workflows/security.yml @security-team @devops-team
+
+# 라이선스 및 법적 문서
+LICENSE @project-owner
+COPYRIGHT @project-owner
+NOTICE @project-owner
+
+# 주의: 실제 사용 시에는 다음 사항들을 고려해주세요:
+# 1. @username 형태로 실제 GitHub 사용자명을 입력해야 합니다
+# 2. @team-name 형태로 GitHub 팀을 지정할 수 있습니다
+# 3. 조직(Organization)에서만 팀 기능을 사용할 수 있습니다
+# 4. 개인 레포지토리에서는 개별 사용자만 지정 가능합니다
+
+# 예시 (실제 사용자명으로 변경 필요):
+# * @your-username
+# *.py @python-developer
+# docs/ @documentation-team 

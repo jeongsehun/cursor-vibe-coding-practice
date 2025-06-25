@@ -1,0 +1,234 @@
+name: 이슈 자동 댓글
+
+on:
+  issues:
+    types: [opened, labeled, assigned]
+
+jobs:
+  auto-comment:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 새 이슈 환영 댓글
+      if: github.event.action == 'opened'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const issue = context.payload.issue;
+          
+          const welcomeComment = `
+          👋 **새로운 이슈를 등록해주셔서 감사합니다!**
+          
+          이슈가 빠르게 처리될 수 있도록 다음 사항들을 확인해주세요:
+          
+          ## ✅ 이슈 체크리스트
+          
+          ### 🐛 버그 리포트인 경우:
+          - [ ] 현재 동작과 예상 동작이 명확히 기술되어 있나요?
+          - [ ] 재현 단계가 포함되어 있나요?
+          - [ ] 환경 정보 (Python 버전, OS 등)가 포함되어 있나요?
+          - [ ] 에러 메시지나 로그가 첨부되어 있나요?
+          
+          ### ✨ 기능 요청인 경우:
+          - [ ] 기능의 목적과 사용 시나리오가 명확한가요?
+          - [ ] 수용 기준이 정의되어 있나요?
+          - [ ] 대안이나 해결방법을 고려해보셨나요?
+          
+          ### 📋 일반 사항:
+          - [ ] 제목이 구체적이고 명확한가요?
+          - [ ] 관련 컴포넌트 (Streamlit, FastAPI, Agent)가 명시되어 있나요?
+          - [ ] 우선순위가 적절히 설정되어 있나요?
+          
+          ## 🏷️ 라벨 안내
+          
+          이슈에 적절한 라벨이 자동으로 할당됩니다:
+          - **type**: bug, enhancement, question, documentation
+          - **component**: streamlit, fastapi, langgraph, tools
+          - **priority**: critical, high, medium, low
+          
+          ## ⏱️ 처리 예상 시간
+          - 🔴 Critical: 24시간 이내
+          - 🟠 High: 3일 이내  
+          - 🟡 Medium: 1주일 이내
+          - 🟢 Low: 2주일 이내
+          
+          빠른 처리를 위해 추가 정보가 필요할 수 있습니다. 협조 부탁드립니다! 🚀
+          `;
+          
+          await github.rest.issues.createComment({
+            owner,
+            repo,
+            issue_number: number,
+            body: welcomeComment
+          });
+
+    - name: 라벨 추가 시 안내 댓글
+      if: github.event.action == 'labeled'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const label = context.payload.label;
+          
+          let labelComment = '';
+          
+          switch(label.name) {
+            case 'priority:critical':
+              labelComment = `
+          🚨 **Critical 우선순위로 설정되었습니다**
+          
+          이 이슈는 최우선으로 처리됩니다:
+          - 24시간 이내 초기 응답
+          - 가능한 한 빠른 해결
+          - 필요시 hotfix 배포
+          
+          긴급한 문제이므로 즉시 확인하겠습니다! ⚡
+              `;
+              break;
+              
+            case 'type:bug':
+              labelComment = `
+          🐛 **버그로 분류되었습니다**
+          
+          버그 해결을 위해 다음 정보가 추가로 필요할 수 있습니다:
+          - 상세한 재현 단계
+          - 에러 로그 또는 스크린샷
+          - 환경 정보 (Python 버전, OS, 브라우저 등)
+          - 예상 동작 vs 실제 동작
+          
+          추가 정보를 제공해주시면 더 빠르게 해결할 수 있습니다! 🔧
+              `;
+              break;
+              
+            case 'type:enhancement':
+              labelComment = `
+          ✨ **기능 개선 요청으로 분류되었습니다**
+          
+          기능 개발을 위해 다음 사항들을 검토하겠습니다:
+          - 기존 기능과의 호환성
+          - 구현 복잡도 및 일정
+          - 사용자 영향도
+          - 기술적 제약사항
+          
+          검토 후 개발 계획을 공유드리겠습니다! 📋
+              `;
+              break;
+              
+            case 'good first issue':
+              labelComment = `
+          👶 **Good First Issue로 표시되었습니다**
+          
+          이 이슈는 새로운 기여자에게 적합합니다:
+          - 복잡도가 낮음
+          - 명확한 해결 방법 존재
+          - 좋은 학습 기회
+          
+          기여에 관심이 있으시다면 언제든 댓글로 질문해주세요! 🤝
+              `;
+              break;
+              
+            case 'help wanted':
+              labelComment = `
+          🆘 **Help Wanted - 도움이 필요합니다**
+          
+          이 이슈는 커뮤니티의 도움이 필요합니다:
+          - 전문 지식이 필요하거나
+          - 추가 리소스가 필요하거나
+          - 다양한 관점에서의 검토가 필요합니다
+          
+          관련 경험이 있으시다면 의견을 공유해주세요! 💬
+              `;
+              break;
+              
+            default:
+              return; // 기본 라벨들에 대해서는 댓글 안함
+          }
+          
+          if (labelComment) {
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: number,
+              body: labelComment
+            });
+          }
+
+    - name: 담당자 할당 시 안내 댓글
+      if: github.event.action == 'assigned'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const assignee = context.payload.assignee;
+          
+          const assignmentComment = `
+          👤 **담당자가 할당되었습니다**
+          
+          **담당자**: @${assignee.login}
+          
+          ## 다음 단계:
+          1. 담당자가 이슈를 검토합니다
+          2. 추가 정보가 필요한 경우 댓글로 질문드립니다
+          3. 해결 방법을 확정하고 작업을 시작합니다
+          4. 진행 상황을 주기적으로 업데이트합니다
+          
+          @${assignee.login} 님, 이슈 검토를 부탁드립니다! 
+          
+          질문이나 우려사항이 있으시면 언제든 댓글로 알려주세요. 📞
+          `;
+          
+          await github.rest.issues.createComment({
+            owner,
+            repo,
+            issue_number: number,
+            body: assignmentComment
+          });
+
+    - name: 컴포넌트별 전문가 멘션
+      if: github.event.action == 'opened'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const issue = context.payload.issue;
+          const title = issue.title.toLowerCase();
+          const body = issue.body.toLowerCase();
+          
+          let experts = [];
+          
+          // 컴포넌트별 전문가 (실제 사용시 실제 GitHub 사용자명으로 변경)
+          if (title.includes('streamlit') || body.includes('streamlit') || 
+              title.includes('frontend') || body.includes('frontend')) {
+            // experts.push('@frontend-expert');
+            console.log('Streamlit/Frontend 관련 이슈 감지');
+          }
+          
+          if (title.includes('fastapi') || body.includes('fastapi') || 
+              title.includes('api') || body.includes('backend')) {
+            // experts.push('@backend-expert');
+            console.log('FastAPI/Backend 관련 이슈 감지');
+          }
+          
+          if (title.includes('agent') || body.includes('langgraph') || 
+              title.includes('llm') || body.includes('langchain')) {
+            // experts.push('@ai-expert');
+            console.log('Agent/LLM 관련 이슈 감지');
+          }
+          
+          if (experts.length > 0) {
+            const expertComment = `
+          🎯 **관련 전문가에게 알림**
+          
+          이 이슈와 관련된 컴포넌트 전문가들에게 알림을 보냈습니다:
+          ${experts.join(' ')}
+          
+          전문가들이 검토 후 도움을 드릴 예정입니다! 👨‍💻
+            `;
+            
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: number,
+              body: expertComment
+            });
+          } 

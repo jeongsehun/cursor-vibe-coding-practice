@@ -1,0 +1,106 @@
+name: PR 자동 댓글
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    steps:
+    - name: PR 환영 댓글
+      if: github.event.action == 'opened'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const welcomeComment = `
+          🎉 **새로운 Pull Request에 오신 것을 환영합니다!**
+          
+          이 PR을 검토하기 전에 다음 사항들을 확인해주세요:
+          
+          ## ✅ 체크리스트
+          - [ ] 코드 변경사항이 요구사항을 충족하나요?
+          - [ ] 새로운 테스트가 추가되었나요? (해당하는 경우)
+          - [ ] 기존 테스트가 모두 통과하나요?
+          - [ ] 문서가 업데이트되었나요? (해당하는 경우)
+          - [ ] 코드 스타일 가이드를 따르나요?
+          
+          ## 📋 구성 요소별 체크
+          ${context.payload.pull_request.changed_files > 0 ? '- [ ] Frontend (Streamlit) 변경사항 확인' : ''}
+          ${context.payload.pull_request.title.toLowerCase().includes('api') || context.payload.pull_request.title.toLowerCase().includes('fastapi') ? '- [ ] Backend (FastAPI) 변경사항 확인' : ''}
+          ${context.payload.pull_request.title.toLowerCase().includes('agent') || context.payload.pull_request.title.toLowerCase().includes('langgraph') ? '- [ ] Agent (LangGraph) 변경사항 확인' : ''}
+          
+          ## 🔍 리뷰 포인트
+          - 코드 품질 및 가독성
+          - 보안 취약점 검토
+          - 성능 영향 분석
+          - 에러 처리 적절성
+          
+          감사합니다! 🚀
+          `;
+          
+          await github.rest.issues.createComment({
+            owner,
+            repo,
+            issue_number: number,
+            body: welcomeComment
+          });
+
+    - name: PR 업데이트 댓글
+      if: github.event.action == 'synchronize'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const updateComment = `
+          🔄 **PR이 업데이트되었습니다!**
+          
+          새로운 커밋이 추가되었습니다. 리뷰어들은 변경사항을 다시 확인해주세요.
+          
+          **최근 커밋**: ${context.payload.after.substring(0, 7)}
+          **변경된 파일 수**: ${context.payload.pull_request.changed_files}개
+          **추가된 라인**: +${context.payload.pull_request.additions}
+          **삭제된 라인**: -${context.payload.pull_request.deletions}
+          
+          자동 테스트가 실행 중입니다... ⚡
+          `;
+          
+          await github.rest.issues.createComment({
+            owner,
+            repo,
+            issue_number: number,
+            body: updateComment
+          });
+
+    - name: 큰 PR 경고 댓글
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const pr = context.payload.pull_request;
+          
+          // 큰 PR 기준: 변경된 파일 20개 이상 또는 500라인 이상 변경
+          if (pr.changed_files > 20 || (pr.additions + pr.deletions) > 500) {
+            const warningComment = `
+            ⚠️ **큰 PR 감지**
+            
+            이 PR은 상당한 양의 변경사항을 포함하고 있습니다:
+            - 변경된 파일: ${pr.changed_files}개
+            - 변경된 라인: ${pr.additions + pr.deletions}라인
+            
+            더 나은 리뷰를 위해 다음을 고려해보세요:
+            1. PR을 더 작은 단위로 분할
+            2. 상세한 설명과 테스트 계획 제공
+            3. 핵심 변경사항 하이라이트
+            
+            리뷰어는 특별히 주의 깊게 검토해주세요! 🔍
+            `;
+            
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: number,
+              body: warningComment
+            });
+          } 

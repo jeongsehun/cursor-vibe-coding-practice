@@ -1,0 +1,256 @@
+name: 이슈 자동 라벨링
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 이슈 타입 자동 라벨링
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const issue = context.payload.issue;
+          const title = issue.title.toLowerCase();
+          const body = (issue.body || '').toLowerCase();
+          
+          const labels = new Set();
+          
+          // 타입별 라벨링
+          if (title.includes('[bug]') || title.includes('bug') || title.includes('error') || 
+              title.includes('issue') || title.includes('problem') || title.includes('fail') ||
+              body.includes('버그') || body.includes('오류') || body.includes('에러') ||
+              body.includes('문제') || body.includes('실패')) {
+            labels.add('type:bug');
+          }
+          
+          if (title.includes('[feat]') || title.includes('[feature]') || title.includes('feature') || 
+              title.includes('enhancement') || title.includes('add') || title.includes('implement') ||
+              body.includes('기능') || body.includes('개선') || body.includes('추가') ||
+              body.includes('새로운') || body.includes('feature request')) {
+            labels.add('type:enhancement');
+          }
+          
+          if (title.includes('question') || title.includes('help') || title.includes('how') ||
+              title.includes('?') || body.includes('질문') || body.includes('도움') ||
+              body.includes('어떻게') || body.includes('방법')) {
+            labels.add('type:question');
+          }
+          
+          if (title.includes('docs') || title.includes('documentation') || title.includes('readme') ||
+              body.includes('문서') || body.includes('documentation') || body.includes('설명')) {
+            labels.add('type:documentation');
+          }
+          
+          if (title.includes('test') || title.includes('testing') || 
+              body.includes('테스트') || body.includes('test')) {
+            labels.add('type:test');
+          }
+          
+          // 라벨 적용
+          if (labels.size > 0) {
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: number,
+              labels: Array.from(labels)
+            });
+            console.log(`타입 라벨 적용: ${Array.from(labels).join(', ')}`);
+          }
+
+    - name: 컴포넌트 자동 라벨링
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const issue = context.payload.issue;
+          const title = issue.title.toLowerCase();
+          const body = (issue.body || '').toLowerCase();
+          
+          const labels = new Set();
+          
+          // 컴포넌트별 라벨링
+          if (title.includes('streamlit') || body.includes('streamlit') || 
+              title.includes('frontend') || body.includes('frontend') ||
+              title.includes('ui') || body.includes('interface') || body.includes('웹')) {
+            labels.add('component:streamlit');
+          }
+          
+          if (title.includes('fastapi') || body.includes('fastapi') || 
+              title.includes('api') || body.includes('backend') ||
+              title.includes('server') || body.includes('endpoint') || 
+              body.includes('서버') || body.includes('백엔드')) {
+            labels.add('component:fastapi');
+          }
+          
+          if (title.includes('agent') || body.includes('agent') || 
+              title.includes('langgraph') || body.includes('langgraph') ||
+              title.includes('llm') || body.includes('langchain') ||
+              body.includes('에이전트') || body.includes('ai') || body.includes('인공지능')) {
+            labels.add('component:langgraph');
+          }
+          
+          if (title.includes('tool') || body.includes('tool') || 
+              title.includes('duckduckgo') || body.includes('search') ||
+              body.includes('검색') || body.includes('도구')) {
+            labels.add('component:tools');
+          }
+          
+          if (title.includes('ci') || title.includes('cd') || title.includes('github') ||
+              title.includes('action') || title.includes('workflow') || title.includes('deploy') ||
+              body.includes('배포') || body.includes('ci/cd')) {
+            labels.add('component:infrastructure');
+          }
+          
+          // 라벨 적용
+          if (labels.size > 0) {
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: number,
+              labels: Array.from(labels)
+            });
+            console.log(`컴포넌트 라벨 적용: ${Array.from(labels).join(', ')}`);
+          }
+
+    - name: 우선순위 자동 라벨링
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const issue = context.payload.issue;
+          const title = issue.title.toLowerCase();
+          const body = (issue.body || '').toLowerCase();
+          
+          let priorityLabel = '';
+          
+          // Critical 우선순위 키워드
+          if (title.includes('critical') || title.includes('urgent') || title.includes('emergency') ||
+              title.includes('hotfix') || title.includes('security') || title.includes('crash') ||
+              body.includes('긴급') || body.includes('심각') || body.includes('크리티컬') ||
+              body.includes('보안') || body.includes('다운') || body.includes('장애')) {
+            priorityLabel = 'priority:critical';
+          }
+          // High 우선순위 키워드
+          else if (title.includes('important') || title.includes('high') || title.includes('blocker') ||
+                   body.includes('중요') || body.includes('높은') || body.includes('블로커') ||
+                   body.includes('우선순위')) {
+            priorityLabel = 'priority:high';
+          }
+          // Low 우선순위 키워드
+          else if (title.includes('nice to have') || title.includes('low') || title.includes('minor') ||
+                   body.includes('낮은') || body.includes('마이너') || body.includes('있으면 좋은')) {
+            priorityLabel = 'priority:low';
+          }
+          // 기본값은 Medium
+          else {
+            priorityLabel = 'priority:medium';
+          }
+          
+          await github.rest.issues.addLabels({
+            owner,
+            repo,
+            issue_number: number,
+            labels: [priorityLabel]
+          });
+          
+          console.log(`우선순위 라벨 적용: ${priorityLabel}`);
+
+    - name: 난이도 자동 라벨링
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const issue = context.payload.issue;
+          const title = issue.title.toLowerCase();
+          const body = (issue.body || '').toLowerCase();
+          
+          const labels = new Set();
+          
+          // Good First Issue 키워드
+          if (title.includes('simple') || title.includes('easy') || title.includes('typo') ||
+              title.includes('documentation') || body.includes('쉬운') || body.includes('간단') ||
+              body.includes('오타') || body.includes('문서') || body.includes('beginner')) {
+            labels.add('good first issue');
+          }
+          
+          // Help Wanted 키워드
+          if (title.includes('help') || title.includes('community') || title.includes('discussion') ||
+              body.includes('도움') || body.includes('커뮤니티') || body.includes('토론') ||
+              body.includes('의견') || body.includes('조언')) {
+            labels.add('help wanted');
+          }
+          
+          // 복잡한 이슈 키워드
+          if (title.includes('complex') || title.includes('architecture') || title.includes('refactor') ||
+              body.includes('복잡') || body.includes('아키텍처') || body.includes('리팩토링') ||
+              body.includes('설계') || body.includes('전면') || body.includes('대규모')) {
+            labels.add('difficulty:hard');
+          }
+          
+          // 라벨 적용
+          if (labels.size > 0) {
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: number,
+              labels: Array.from(labels)
+            });
+            console.log(`난이도 라벨 적용: ${Array.from(labels).join(', ')}`);
+          }
+
+    - name: 특수 상황 라벨링
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const issue = context.payload.issue;
+          const title = issue.title.toLowerCase();
+          const body = (issue.body || '').toLowerCase();
+          
+          const labels = new Set();
+          
+          // 중복 이슈 감지 (간단한 키워드 기반)
+          if (title.includes('duplicate') || body.includes('duplicate') ||
+              body.includes('중복') || body.includes('같은') || body.includes('이미')) {
+            labels.add('duplicate');
+          }
+          
+          // 무효한 이슈 감지
+          if (title.includes('invalid') || body.includes('invalid') ||
+              body.includes('무효') || body.includes('잘못')) {
+            labels.add('invalid');
+          }
+          
+          // 추가 정보 필요
+          if (body.length < 50 || !body.includes('\n')) {
+            labels.add('needs more info');
+          }
+          
+          // 외부 의존성 관련
+          if (title.includes('external') || body.includes('external') ||
+              title.includes('third-party') || body.includes('third-party') ||
+              body.includes('외부') || body.includes('서드파티')) {
+            labels.add('external dependency');
+          }
+          
+          // 성능 관련
+          if (title.includes('performance') || title.includes('slow') || title.includes('fast') ||
+              body.includes('성능') || body.includes('느림') || body.includes('속도') ||
+              body.includes('빠름') || body.includes('최적화')) {
+            labels.add('performance');
+          }
+          
+          // 라벨 적용
+          if (labels.size > 0) {
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: number,
+              labels: Array.from(labels)
+            });
+            console.log(`특수 라벨 적용: ${Array.from(labels).join(', ')}`);
+          } 

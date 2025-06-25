@@ -1,0 +1,181 @@
+name: PR 자동 코드 리뷰
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  auto-review:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: 코드 품질 자동 검토
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          
+          // PR 파일 변경사항 가져오기
+          const files = await github.rest.pulls.listFiles({
+            owner,
+            repo,
+            pull_number: number
+          });
+          
+          const reviewComments = [];
+          let hasIssues = false;
+          
+          for (const file of files.data) {
+            const filename = file.filename;
+            const patch = file.patch || '';
+            
+            // Python 파일 검토
+            if (filename.endsWith('.py')) {
+              // 보안 취약점 검토
+              if (patch.includes('eval(') || patch.includes('exec(')) {
+                reviewComments.push(`⚠️ **보안 경고**: \`${filename}\`에서 \`eval()\` 또는 \`exec()\` 사용이 감지되었습니다. 보안 위험이 있을 수 있습니다.`);
+                hasIssues = true;
+              }
+              
+              // 하드코딩된 비밀번호/키 검토
+              if (patch.match(/password\s*=\s*['"]/i) || patch.match(/api_key\s*=\s*['"]/i) || patch.match(/secret\s*=\s*['"]/i)) {
+                reviewComments.push(`🔒 **보안 경고**: \`${filename}\`에서 하드코딩된 비밀정보가 감지되었습니다. 환경변수를 사용해주세요.`);
+                hasIssues = true;
+              }
+              
+              // TODO/FIXME 검토
+              if (patch.includes('TODO') || patch.includes('FIXME')) {
+                reviewComments.push(`📝 **알림**: \`${filename}\`에 TODO 또는 FIXME 주석이 있습니다. 이슈로 등록하는 것을 고려해보세요.`);
+              }
+              
+              // 큰 함수 검토 (라인 수 기준)
+              const addedLines = patch.split('\n').filter(line => line.startsWith('+')).length;
+              if (addedLines > 50) {
+                reviewComments.push(`📏 **코드 품질**: \`${filename}\`에서 많은 라인이 추가되었습니다. 함수를 더 작게 나누는 것을 고려해보세요.`);
+              }
+              
+              // 예외처리 검토
+              if (patch.includes('except:') && !patch.includes('except Exception:')) {
+                reviewComments.push(`⚡ **코드 품질**: \`${filename}\`에서 너무 광범위한 예외처리가 감지되었습니다. 구체적인 예외 타입을 지정해주세요.`);
+              }
+            }
+            
+            // YAML 파일 검토 (GitHub Actions)
+            if (filename.endsWith('.yml') || filename.endsWith('.yaml')) {
+              if (patch.includes('run:') && !patch.includes('shell:')) {
+                reviewComments.push(`⚙️ **CI/CD**: \`${filename}\`에서 shell을 명시적으로 지정하는 것을 고려해보세요.`);
+              }
+            }
+            
+            // 환경 파일 검토
+            if (filename.includes('.env')) {
+              reviewComments.push(`🔐 **보안 경고**: 환경 파일 \`${filename}\`이 변경되었습니다. 민감한 정보가 포함되지 않았는지 확인해주세요.`);
+              hasIssues = true;
+            }
+          }
+          
+          // 자동 리뷰 댓글 작성
+          if (reviewComments.length > 0) {
+            const reviewBody = `
+          ## 🤖 자동 코드 리뷰 결과
+          
+          다음 사항들을 검토해주세요:
+          
+          ${reviewComments.map(comment => `- ${comment}`).join('\n')}
+          
+          ${hasIssues ? '⚠️ **중요한 이슈가 발견되었습니다. 수정 후 다시 검토해주세요.**' : '✅ **대부분의 자동 검사를 통과했습니다.**'}
+          
+          ---
+          *이는 자동 생성된 리뷰입니다. 추가적인 수동 리뷰가 필요할 수 있습니다.*
+            `;
+            
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: number,
+              body: reviewBody
+            });
+          }
+
+    - name: 성능 영향 분석
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const pr = context.payload.pull_request;
+          
+          // PR 크기 기반 성능 영향 분석
+          const totalChanges = pr.additions + pr.deletions;
+          const changedFiles = pr.changed_files;
+          
+          if (totalChanges > 500 || changedFiles > 15) {
+            const performanceComment = `
+          ## 📊 성능 영향 분석
+          
+          이 PR은 상당한 변경사항을 포함하고 있습니다:
+          - **변경된 파일**: ${changedFiles}개
+          - **추가된 라인**: +${pr.additions}
+          - **삭제된 라인**: -${pr.deletions}
+          
+          ### 권장 사항:
+          1. **성능 테스트** 실행을 고려해주세요
+          2. **메모리 사용량** 변화를 확인해주세요
+          3. **API 응답 시간**에 영향이 있는지 검토해주세요
+          4. **Streamlit 앱 로딩 시간**을 확인해주세요
+          
+          큰 변경사항이므로 철저한 테스트를 권장합니다! 🚀
+            `;
+            
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: number,
+              body: performanceComment
+            });
+          }
+
+    - name: 의존성 변경 검토
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          
+          // requirements.txt나 package.json 변경사항 확인
+          const files = await github.rest.pulls.listFiles({
+            owner,
+            repo,
+            pull_number: number
+          });
+          
+          const dependencyFiles = files.data.filter(file => 
+            file.filename.includes('requirements.txt') || 
+            file.filename.includes('package.json') ||
+            file.filename.includes('pyproject.toml') ||
+            file.filename.includes('setup.py')
+          );
+          
+          if (dependencyFiles.length > 0) {
+            const dependencyComment = `
+          ## 📦 의존성 변경 감지
+          
+          다음 의존성 파일들이 변경되었습니다:
+          ${dependencyFiles.map(file => `- \`${file.filename}\``).join('\n')}
+          
+          ### 확인 사항:
+          - [ ] 새로운 의존성이 꼭 필요한가요?
+          - [ ] 버전 호환성을 확인했나요?
+          - [ ] 보안 취약점이 있는 패키지는 없나요?
+          - [ ] 라이선스 호환성을 확인했나요?
+          - [ ] 개발/테스트 환경에서 정상 작동하나요?
+          
+          의존성 변경은 전체 프로젝트에 영향을 줄 수 있으므로 신중히 검토해주세요! ⚠️
+            `;
+            
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: number,
+              body: dependencyComment
+            });
+          } 
