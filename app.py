@@ -31,7 +31,8 @@ def main():
     with col1:
         st.info("📅 **현재 시간**")
         current_time = datetime.datetime.now()
-        st.write(f"⏰ {current_time.strftime('%Y년 %m월 %d일 %H:%M:%S')}")
+        # 버그: 존재하지 않는 변수 참조
+        st.write(f"⏰ {undefined_variable.strftime('%Y년 %m월 %d일 %H:%M:%S')}")
     
     with col2:
         st.success("✅ **상태**")
@@ -74,7 +75,8 @@ def main():
     
     for task, progress in progress_data.items():
         st.write(f"**{task}**: {progress}%")
-        st.progress(progress / 100)
+        # 버그: 0으로 나누기 오류
+        st.progress(progress / 0)
 
 if __name__ == "__main__":
     main() 
